@@ -107,13 +107,15 @@ const updatePlanes = async () => {
     const response = await fetch("https://data.vatsim.net/v3/vatsim-data.json");
     const {pilots} = await response.json();
     // Only process planes in our area
-    pilots.filter((plane) => {
+    const filteredpilots = pilots.filter((plane) => {
         if (plane.latitude > 43 && plane.latitude <= 90 &&
             wrapCoords(plane.latitude, plane.longitude)[1] >= -210 &&
             wrapCoords(plane.latitude, plane.longitude)[1] <= -128) {
             return true;
         }
-    }).forEach((plane) => {
+    });
+    
+    filteredpilots.forEach((plane) => {
         if (plane.callsign in planes) {
             planes[plane.callsign].setLatLng(wrapCoords(plane.latitude, plane.longitude));
             planes[plane.callsign].setIcon(planeIcon(getRotate(plane.heading), plane.flight_plan.arrival, plane.flight_plan.departure));
@@ -129,6 +131,14 @@ const updatePlanes = async () => {
                 this.closePopup();
             });
             planes[plane.callsign].addTo(planeLayer);
+        }
+    });
+
+    // Find aircraft not in filteredpilots but is in planes, and remove them as that means they've left our bounding box or disconnected
+    Object.keys(planes).forEach((key) => {
+        if (!filteredpilots.some((plane) => plane.callsign === key)) {
+            map.removeLayer(planes[key]);
+            delete planes[key];
         }
     });
 }
